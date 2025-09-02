@@ -2,27 +2,29 @@
 
 namespace App\Models;
 
-use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Support\Facades\Hash;
+use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
-    use HasFactory;
+    use HasApiTokens, HasFactory, Notifiable;
 
     protected $fillable = [
-        'nome',
-        'sobrenome',
+        'name',
         'email',
-        'username',
         'password',
+        'role',
     ];
 
     protected $hidden = [
         'password',
+        'remember_token',
     ];
 
     protected $casts = [
+        'email_verified_at' => 'datetime',
         'password' => 'hashed',
     ];
 
@@ -31,23 +33,8 @@ class User extends Authenticatable
         return $this->hasMany(Evento::class, 'responsavel_id');
     }
 
-    public function ordensServico()
+    public function isAdmin()
     {
-        return $this->hasMany(OrdemServico::class, 'responsavel_id');
-    }
-
-    public function getNomeCompletoAttribute()
-    {
-        return $this->nome . ' ' . $this->sobrenome;
-    }
-
-    public function getUsernameAttribute($value)
-    {
-        return $value ?: strtolower($this->nome . '.' . $this->sobrenome);
-    }
-
-    public function setPasswordAttribute($value)
-    {
-        $this->attributes['password'] = Hash::make($value);
+        return $this->role === 'admin';
     }
 }

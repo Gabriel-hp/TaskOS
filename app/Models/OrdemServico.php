@@ -13,29 +13,31 @@ class OrdemServico extends Model
 
     protected $fillable = [
         'evento_id',
-        'protocolo',
-        'cliente_nome',
-        'endereco',
+        'cliente',
+        'cnpj',
+        'endereco_cliente',
+        'contato_cliente',
         'designacao',
-        'motivo',
-        'data_hora_inicio',
-        'responsavel_id',
-        'anexo',
+        'hora_inicio',
+        'hora_fim',
+        'modelo_equipamento',
+        'numero_equipamento',
+        'serial_equipamento',
+        'descricao_servico',
         'observacao',
-        'status',
+        'materiais',
+        'mac',
+        'observacoes',
+        'protocolo',
     ];
 
     protected $casts = [
-        'data_hora_inicio' => 'datetime',
+        'hora_inicio' => 'datetime:H:i',
+        'hora_fim' => 'datetime:H:i',
     ];
 
     public function evento()
     {
-        return $this->belongsTo(Evento::class);
-    }
-
-    public function responsavel()
-    {
-        return $this->belongsTo(User::class, 'responsavel_id');
+        return $this->belongsTo(Evento::class, 'evento_id');
     }
 }

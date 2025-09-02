@@ -10,16 +10,16 @@ class Evento extends Model
     use HasFactory;
 
     protected $fillable = [
-        'titulo',
+        'title',
         'assunto',
         'endereco',
-        'data_hora',
+        'start',
         'responsavel_id',
         'status',
     ];
 
     protected $casts = [
-        'data_hora' => 'datetime',
+        'start' => 'datetime',
     ];
 
     public function responsavel()
@@ -29,6 +29,6 @@ class Evento extends Model
 
     public function ordemServico()
     {
-        return $this->hasOne(OrdemServico::class);
+        return $this->hasOne(OrdemServico::class, 'evento_id');
     }
 }

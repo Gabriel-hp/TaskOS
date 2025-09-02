@@ -4,68 +4,100 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Evento;
+use App\Models\OrdemServico;
 use App\Models\User;
+use Carbon\Carbon;
 
 class EventoController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         $eventos = Evento::with('responsavel')->get();
-        return response()->json($eventos);
+        $users = User::all();
+
+        $eventoId = $request->query('evento_id');
+        $evento = null;
+
+        if ($eventoId) {
+            $evento = Evento::find($eventoId);
+        }
+
+        return view('agenda.index', compact('eventos', 'users', 'evento'));
     }
+
 
     public function store(Request $request)
     {
-        $request->validate([
-            'titulo' => 'required|string|max:255',
+        $validated = $request->validate([
+            'title' => 'required|string|max:255',
             'assunto' => 'required|string',
-            'endereco' => 'required|string',
-            'data_hora' => 'required|date',
+            'endereco' => 'required|string|max:255',
+            'date' => 'required|date',
+            'time' => 'required',
             'responsavel_id' => 'required|exists:users,id',
         ]);
 
-        $evento = Evento::create($request->all());
-        $evento->load('responsavel');
+        $start = Carbon::createFromFormat('Y-m-d H:i', $validated['date'] . ' ' . $validated['time']);
 
-        return response()->json([
-            'success' => true,
-            'evento' => $evento
-        ]);
-    }
-
-    public function show($id)
-    {
-        $evento = Evento::with(['responsavel', 'ordemServico'])->findOrFail($id);
-        return response()->json($evento);
-    }
-
-    public function update(Request $request, $id)
-    {
-        $evento = Evento::findOrFail($id);
-        
-        $request->validate([
-            'titulo' => 'sometimes|required|string|max:255',
-            'assunto' => 'sometimes|required|string',
-            'endereco' => 'sometimes|required|string',
-            'data_hora' => 'sometimes|required|date',
-            'responsavel_id' => 'sometimes|required|exists:users,id',
-            'status' => 'sometimes|required|in:Pendente,Em execução,Finalizado,Reagendado',
+        $evento = Evento::create([
+            'title' => $validated['title'],
+            'assunto' => $validated['assunto'],
+            'endereco' => $validated['endereco'],
+            'start' => $start,
+            'responsavel_id' => $validated['responsavel_id'],
         ]);
 
-        $evento->update($request->all());
-        $evento->load('responsavel');
-
-        return response()->json([
-            'success' => true,
-            'evento' => $evento
+        // Criar automaticamente uma O.S. para o evento
+        OrdemServico::create([
+            'evento_id' => $evento->id,
+            'cliente' => $validated['title'],
+            'endereco_cliente' => $validated['endereco'],
+            'designacao' => $validated['assunto'],
+            'hora_inicio' => $validated['time'],
+            'descricao_servico' => 'Ativação',
         ]);
+
+        return response()->json(['success' => true, 'evento' => $evento->load('responsavel')]);
     }
 
-    public function destroy($id)
+    public function updateStatus(Request $request, Evento $evento)
     {
-        $evento = Evento::findOrFail($id);
-        $evento->delete();
+        $validated = $request->validate([
+            'status' => 'required|in:agendado,feito,reagendado,cancelado',
+        ]);
+
+        $evento->update(['status' => $validated['status']]);
 
         return response()->json(['success' => true]);
+    }
+
+    public function getEvents()
+    {
+        $eventos = Evento::with('responsavel')->get()->map(function($evento) {
+            return [
+                'id' => $evento->id,
+                'title' => $evento->title,
+                'start' => $evento->start->toISOString(),
+                'backgroundColor' => $this->getStatusColor($evento->status),
+                'borderColor' => $this->getStatusColor($evento->status),
+                'extendedProps' => [
+                    'status' => $evento->status,
+                    'responsavel' => $evento->responsavel->name,
+                ]
+            ];
+        });
+
+        return response()->json($eventos);
+    }
+
+    private function getStatusColor($status)
+    {
+        return match($status) {
+            'agendado' => '#3b82f6',
+            'feito' => '#10b981',
+            'reagendado' => '#f59e0b',
+            'cancelado' => '#ef4444',
+            default => '#6b7280'
+        };
     }
 }
